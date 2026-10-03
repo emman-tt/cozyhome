@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@theme {
+  /* palette sampled from the Dribbble shot by gapsystudio */
+  --color-salmon: #cc7971;
+  --color-salmon-deep: #c97168;
+  --color-salmon-light: #d69089;
+  --color-maroon: #640620;
+  --color-ink: #220c09;
+  --color-cream: #eac9bc;
+  --color-blush: #e7b3a6;
+  --color-dusty: #cea99e;
+  --color-taupe: #9d8b73;
+  --color-terra: #a8655c;
+  --color-pink: #e2768a;
+
+  --font-display: "Italiana", "Times New Roman", serif;
+  --font-body: "Inter", system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: #ffffff;
+  overflow-x: hidden;
+}
