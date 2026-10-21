@@ -44,7 +44,7 @@ jobs:
             docker pull ghcr.io/${{ github.repository }}:latest 
             docker stop cozyhome || true 
             docker rm cozyhome  || true 
-            docker run -d -p 127.0.0.1:3001:80 \
+            docker run -d -p 127.0.0.1:3002:80 \
             --restart unless-stopped \
             --name cozyhome ghcr.io/${{ github.repository }}:latest
             docker logs cozyhome
