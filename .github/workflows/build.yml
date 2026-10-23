@@ -1,8 +1,14 @@
-name: Build  and push
+name: Build and push
 
 on:
   push:
     branches: [main]
+
+env:
+  APP_NAME: "cozyhome"
+  HOST_PORT: "3002"
+  CONTAINER_PORT: "80"
+  NGINX_FILE: "cozyhome-nginx.conf"
 
 jobs:
   build:
@@ -29,10 +35,24 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.sha }}
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy Nginx Config to Server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USER }}
+          port: 22
+          key: ${{ secrets.KEY }}
+          source: "cozyhome-nginx.conf"
+          target: "/home/ubuntu/deploy/"
+
       - name: SSH into vm and deploy
         uses: appleboy/ssh-action@v1
         with:
@@ -40,11 +60,39 @@ jobs:
           username: ${{ secrets.USER }}
           port: 22
           key: ${{ secrets.KEY }}
+          envs: APP_NAME, HOST_PORT ,CONTAINER_PORT
           script: |
             docker pull ghcr.io/${{ github.repository }}:latest 
-            docker stop cozyhome || true 
-            docker rm cozyhome  || true 
-            docker run -d -p 127.0.0.1:3002:80 \
+            docker stop $APP_NAME || true 
+            echo "$APP_NAME stopped"
+            docker rm $APP_NAME  || true 
+            echo "$APP_NAME removed"
+            docker run -d -p 127.0.0.1:$HOST_PORT:$CONTAINER_PORT \
             --restart unless-stopped \
-            --name cozyhome ghcr.io/${{ github.repository }}:latest
-            docker logs cozyhome
+            --name $APP_NAME ghcr.io/${{ github.repository }}:latest 
+            docker logs $APP_NAME
+
+      - name: Copy nginx configuration, symlink to enable, test and reload host nginx
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USER }}
+          port: 22
+          key: ${{ secrets.KEY }}
+          envs: APP_NAME , NGINX_FILE
+          script: |
+            sudo cp /home/ubuntu/deploy/$NGINX_FILE /etc/nginx/sites-available/$APP_NAME
+            sudo ln -sf /etc/nginx/sites-available/$APP_NAME /etc/nginx/sites-enabled/$APP_NAME
+            sudo nginx -t
+            sudo systemctl reload nginx
+
+  aftermath:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update repo description
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          APP_NAME: ${{ env.APP_NAME }}
+        run: |
+          gh repo edit "${{ github.repository }}" --homepage "https://$APP_NAME.emmanverse.uk"
